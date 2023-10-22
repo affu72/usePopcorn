@@ -27,11 +27,9 @@ function StarRating({
     onRate?.(rating);
   };
 
-  console.log(color);
-
   return (
-    <div className="flex gap-2 items-center">
-      <div className="flex p-4">
+    <div className="flex items-center gap-2">
+      <div className="flex">
         {Array.from({ length: maxRating }, (_, i) => (
           <Star
             key={i}
