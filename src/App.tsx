@@ -1,6 +1,9 @@
 // import reactLogo from './assets/react.svg'
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import Loading from './Loading';
+import StarRating from './StarRating';
+import RateConversion from './RateConversion';
 
 type MovieType = {
   imdbID: string;
@@ -8,30 +11,6 @@ type MovieType = {
   Year: string;
   Poster: string;
 };
-
-const tempMovieData: MovieType[] = [
-  {
-    imdbID: 'tt1375666',
-    Title: 'Inception',
-    Year: '2010',
-    Poster:
-      'https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg',
-  },
-  {
-    imdbID: 'tt0133093',
-    Title: 'The Matrix',
-    Year: '1999',
-    Poster:
-      'https://m.media-amazon.com/images/M/MV5BNzQzOTk3OTAtNDQ0Zi00ZTVkLWI0MTEtMDllZjNkYzNjNTc4L2ltYWdlXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_SX300.jpg',
-  },
-  {
-    imdbID: 'tt6751668',
-    Title: 'Parasite',
-    Year: '2019',
-    Poster:
-      'https://m.media-amazon.com/images/M/MV5BYWZjMjk3ZTItODQ2ZC00NTY5LWE0ZDYtZTI3MjcwN2Q5NTVkXkEyXkFqcGdeQXVyODk4OTc3MTY@._V1_SX300.jpg',
-  },
-];
 
 type watchedListType = {
   imdbID: string;
@@ -42,49 +21,214 @@ type watchedListType = {
   imdbRating: number;
   userRating: number;
 };
-
-const tempWatchedData: watchedListType[] = [
-  {
-    imdbID: 'tt1375666',
-    Title: 'Inception',
-    Year: '2010',
-    Poster:
-      'https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg',
-    runtime: 148,
-    imdbRating: 8.8,
-    userRating: 10,
-  },
-  {
-    imdbID: 'tt0088763',
-    Title: 'Back to the Future',
-    Year: '1985',
-    Poster:
-      'https://m.media-amazon.com/images/M/MV5BZmU0M2Y1OGUtZjIxNi00ZjBkLTg1MjgtOWIyNThiZWIwYjRiXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_SX300.jpg',
-    runtime: 116,
-    imdbRating: 8.5,
-    userRating: 9,
-  },
-];
+const API_KEY = '46b47180';
 
 function App() {
-  const [movies, setMovies] = useState(tempMovieData);
-  const [watched, setWached] = useState(tempWatchedData);
+  const [movies, setMovies] = useState([]);
+  const [watched, setWached] = useState([]);
+  const [query, setQuery] = useState('inception');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  function handleSelectMovie(id: string) {
+    setSelectedId((selectedId) => (id === selectedId ? null : id));
+  }
+
+  function handleCloseMovieDetails() {
+    console.log(
+      'change selected id to null, settstae will be called and hence this component will get rended so all its child will also re-render, but as details component unmounted, the effect will not run',
+    );
+    setSelectedId(null);
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function getMovieData() {
+      try {
+        setIsLoading(true);
+        setErr('');
+        const res = await fetch(
+          `http://www.omdbapi.com/?apikey=${API_KEY}&s=${query}`,
+          { signal: controller.signal },
+        );
+
+        if (!res.ok)
+          throw new Error('Something went wrong in fetching movie data');
+
+        const data = await res.json();
+
+        if (data.Response === 'False') {
+          throw new Error(data.Error);
+        }
+
+        setMovies(() => data.Search);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          setErr(err.message);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (query.length < 3) {
+      setMovies([]);
+      setErr('');
+      return;
+    }
+
+    handleCloseMovieDetails();
+    getMovieData();
+
+    return function () {
+      controller.abort();
+    };
+  }, [query]);
+
   return (
     <>
       <NavBar>
-        <Search></Search>
+        <Search query={query} setQuery={setQuery}></Search>
         <Statistics movies={movies} />
       </NavBar>
       <Main>
-        <Box>
-          <MovieList movies={movies} />
+        <Box key={'movie box'}>
+          {err && <ErrorMessage message={err} />}
+          {isLoading && <Loading />}
+          {!err && !isLoading && (
+            <MovieList movies={movies} onSelect={handleSelectMovie} />
+          )}
         </Box>
-        <Box>
-          <WatchedSummary watched={watched}></WatchedSummary>
-          <WatchList watched={watched}></WatchList>
+        <Box key={'watch-box'}>
+          {selectedId ? (
+            <MovieDetails
+              selectedId={selectedId}
+              onClose={handleCloseMovieDetails}
+            />
+          ) : (
+            <>
+              <WatchedSummary watched={watched}></WatchedSummary>
+              <WatchList watched={watched}></WatchList>
+            </>
+          )}
         </Box>
       </Main>
     </>
+  );
+}
+
+function MovieDetails({
+  selectedId,
+  onClose,
+}: {
+  selectedId: string;
+  onClose: () => void;
+}) {
+  const [movie, setMovie] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  const {
+    Title: title,
+    Year: year,
+    Poster: poster,
+    Runtime: runtime,
+    imdbRating,
+    Plot: plot,
+    Released: released,
+    Director: director,
+    Genre: genre,
+    Actor: actor,
+  } = movie;
+
+  useEffect(() => {
+    async function getMovieDetails() {
+      setIsLoading(true);
+      const res = await fetch(
+        `http://www.omdbapi.com/?apikey=${API_KEY}&i=${selectedId}`,
+      );
+
+      const data = await res.json();
+
+      setMovie(data);
+      setIsLoading(false);
+    }
+
+    getMovieDetails();
+  }, [selectedId]);
+
+  useEffect(
+    function () {
+      console.log(selectedId);
+      if (!title) return;
+      document.title = selectedId ? `Movie | ${title}` : 'usePopcorn';
+
+      return function () {
+        document.title = 'usePopcorn';
+        console.log('runs when unmount and re-render');
+      };
+    },
+    [title, selectedId],
+  );
+
+  useEffect(() => {
+    function handleKeypress(e) {
+      if (e.code === 'Escape') {
+        onClose();
+      }
+    }
+
+    document.addEventListener('keydown', handleKeypress);
+    return function () {
+      document.removeEventListener('keydown', handleKeypress);
+    };
+  }, []);
+
+  return isLoading ? (
+    <Loading />
+  ) : (
+    <div className="p-2 flex flex-col gap-4 justify-center">
+      <header className="relative flex">
+        <button
+          className="bg-gray-200/80 lex aspect-square h-8 flex items-center justify-center rounded-full text-3xl font-bold absolute text-gray-900"
+          onClick={onClose}
+        >
+          <span className="mb-1.5">&larr;</span>
+        </button>
+        <img src={poster} alt={`poster of the ${title}`} className="h-40" />
+        <div className="flex flex-col gap-1 ml-8">
+          <h2 className="font-bold">{title}</h2>
+          <p>
+            {released} &bull; {runtime}
+          </p>
+          <p>{genre}</p>
+          <p>
+            <span>⭐</span>
+            {imdbRating} imdb rating
+          </p>
+        </div>
+      </header>
+
+      <section className="flex flex-col gap-4 ml-4">
+        <div className="bg-gray-800/60 rounded-md px-6 self-center py-4 w-full">
+          <StarRating maxRating={10} size={36}></StarRating>
+        </div>
+        <p>
+          <em>{plot}</em>
+        </p>
+        <p>Starring {actor}</p>
+        <p>Directed by {director}</p>
+      </section>
+    </div>
+  );
+}
+
+function ErrorMessage({ message }: { message: string }) {
+  return (
+    <div className="h-full flex items-center justify-center">
+      <p>{message}</p>
+    </div>
   );
 }
 
@@ -116,14 +260,19 @@ const Logo = () => {
   );
 };
 
-const Search = () => {
-  const [query, setQuery] = useState('');
+type PropSearch = {
+  query: string;
+  setQuery: (s: string) => void;
+};
+
+const Search = ({ query, setQuery }: PropSearch) => {
   return (
     <input
       type="text"
       className="text-md ms:px-4 ms:py-4 ms:text-xl w-40 rounded-md bg-[#7950f2]  px-3 py-2 outline-none transition-all duration-300 placeholder:text-sm sm:w-72 sm:placeholder:text-base sm:focus:w-96"
       placeholder="Search movies..."
       onChange={(e) => setQuery(e.target.value)}
+      value={query}
     />
   );
 };
@@ -144,7 +293,7 @@ const Box = ({ children }: { children: React.ReactNode }) => {
     <div className="relative w-96 max-w-sm rounded-md bg-[#2b3035] h-full overflow-auto scrollbar transition-all duration-700">
       <button
         onClick={() => setIsOpen((open) => !open)}
-        className="absolute right-2 top-2 flex aspect-square h-4 items-center justify-center rounded-full bg-[#212529]"
+        className="sticky top-2 mr-2 right-0 flex aspect-square h-4 items-center justify-center rounded-full bg-[#212529] float-right"
       >
         <span className="mb-1.5 text-xl">{isOpen ? '-' : '+'}</span>
       </button>
@@ -156,19 +305,36 @@ const Box = ({ children }: { children: React.ReactNode }) => {
 const average = (value: number[]) =>
   value.reduce((acc, num) => num / value.length + acc, 0);
 
-const MovieList = ({ movies }: { movies: MovieType[] }) => {
+const MovieList = ({
+  movies,
+  onSelect,
+}: {
+  movies: MovieType[];
+  onSelect: (id: string) => void;
+}) => {
   return (
     <ul className="divide-y divide-stone-700">
       {movies.map((movie) => {
-        return <Movie movie={movie} key={movie.imdbID}></Movie>;
+        return (
+          <Movie movie={movie} key={movie.imdbID} onSelect={onSelect}></Movie>
+        );
       })}
     </ul>
   );
 };
 
-const Movie = ({ movie }: { movie: MovieType }) => {
+const Movie = ({
+  movie,
+  onSelect,
+}: {
+  movie: MovieType;
+  onSelect: (id: string) => void;
+}) => {
   return (
-    <li className="grid grid-cols-[40px_1fr] items-center gap-x-6 px-8 py-4">
+    <li
+      className="grid grid-cols-[40px_1fr] items-center gap-x-6 px-8 py-4 cursor-pointer hover:bg-stone-900"
+      onClick={() => onSelect(movie.imdbID)}
+    >
       <img
         src={movie.Poster}
         alt="movie poster"
