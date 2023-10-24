@@ -26,7 +26,7 @@ const API_KEY = '46b47180';
 function App() {
   const [movies, setMovies] = useState([]);
   const [watched, setWached] = useState([]);
-  const [query, setQuery] = useState('inception');
+  const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -65,6 +65,7 @@ function App() {
 
         setMovies(() => data.Search);
       } catch (err: any) {
+        setMovies([]);
         if (err.name !== 'AbortError') {
           setErr(err.message);
         }
@@ -90,18 +91,19 @@ function App() {
   return (
     <>
       <NavBar>
+        {movies.length > 0 && <Statistics movies={movies} />}
         <Search query={query} setQuery={setQuery}></Search>
-        <Statistics movies={movies} />
       </NavBar>
       <Main>
-        <Box key={'movie box'}>
+        <Box>
+          {!query && <StartSearchText></StartSearchText>}
           {err && <ErrorMessage message={err} />}
           {isLoading && <Loading />}
           {!err && !isLoading && (
             <MovieList movies={movies} onSelect={handleSelectMovie} />
           )}
         </Box>
-        <Box key={'watch-box'}>
+        <Box>
           {selectedId ? (
             <MovieDetails
               selectedId={selectedId}
@@ -270,16 +272,17 @@ const Search = ({ query, setQuery }: PropSearch) => {
     <input
       type="text"
       className="text-md ms:px-4 ms:py-4 ms:text-xl w-40 rounded-md bg-[#7950f2]  px-3 py-2 outline-none transition-all duration-300 placeholder:text-sm sm:w-72 sm:placeholder:text-base sm:focus:w-96"
-      placeholder="Search movies..."
+      placeholder="Search movies... <min 3 char>"
       onChange={(e) => setQuery(e.target.value)}
       value={query}
+      autoFocus={true}
     />
   );
 };
 
 const Statistics = ({ movies }: { movies: MovieType[] }) => {
   return (
-    <div className="">
+    <div className="justify-self-end">
       <p className="text-sm sm:text-xl">
         Found <span className="font-bold">{movies.length}</span> results
       </p>
@@ -290,7 +293,7 @@ const Statistics = ({ movies }: { movies: MovieType[] }) => {
 const Box = ({ children }: { children: React.ReactNode }) => {
   const [isOpen, setIsOpen] = useState(true);
   return (
-    <div className="relative w-96 max-w-sm rounded-md bg-[#2b3035] h-full overflow-auto scrollbar transition-all duration-700">
+    <div className="relative w-96 max-w-md rounded-md bg-[#2b3035] h-full overflow-auto scrollbar transition-all duration-700">
       <button
         onClick={() => setIsOpen((open) => !open)}
         className="sticky top-2 mr-2 right-0 flex aspect-square h-4 items-center justify-center rounded-full bg-[#212529] float-right"
@@ -420,5 +423,16 @@ const WatchedMovie = ({ movie }: { movie: watchedListType }) => {
     </li>
   );
 };
+
+function StartSearchText() {
+  return (
+    <div className="flex flex-col items-center h-full border-red-300 w-full justify-center">
+      <span className="uppercase text-4xl tracking-widest font-extrabold">
+        Start
+      </span>
+      <span className="tracking-wide text-xl">Searching a movie...</span>
+    </div>
+  );
+}
 
 export default App;
