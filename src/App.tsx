@@ -1,6 +1,6 @@
 // import reactLogo from './assets/react.svg'
 
-import React, { useEffect, useState } from 'react';
+import React, { DOMElement, useEffect, useRef, useState } from 'react';
 import Loading from './Loading';
 import StarRating from './StarRating';
 import RateConversion from './RateConversion';
@@ -14,18 +14,35 @@ type MovieType = {
 
 type watchedListType = {
   imdbID: string;
-  Title: string;
-  Year: string;
-  Poster: string;
+  title: string;
+  year: string;
+  poster: string;
   runtime: number;
   imdbRating: number;
   userRating: number;
 };
+
+type TmovieDetails = {
+  title: string;
+  year: string;
+  poster: string;
+  runtime: string;
+  imdbRating: string;
+  plot: string;
+  released: string;
+  director: string;
+  genre: string;
+  actor: string;
+};
 const API_KEY = '46b47180';
 
 function App() {
-  const [movies, setMovies] = useState([]);
-  const [watched, setWached] = useState([]);
+  const [movies, setMovies] = useState<MovieType[]>([]);
+  // const [watched, setWatched] = useState<watchedListType[]>([]);
+  const [watched, setWatched] = useState<watchedListType[]>(() => {
+    const storedValue = localStorage.getItem('watched')!;
+    return JSON.parse(storedValue);
+  });
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -37,10 +54,11 @@ function App() {
   }
 
   function handleCloseMovieDetails() {
-    console.log(
-      'change selected id to null, settstae will be called and hence this component will get rended so all its child will also re-render, but as details component unmounted, the effect will not run',
-    );
     setSelectedId(null);
+  }
+
+  function handleDeleteMovie(id: string) {
+    setWatched((prev) => prev.filter((m) => m.imdbID !== id));
   }
 
   useEffect(() => {
@@ -88,6 +106,18 @@ function App() {
     };
   }, [query]);
 
+  function handleAddWatched(movie: watchedListType) {
+    setWatched((prev) => [...prev, movie]);
+    handleCloseMovieDetails();
+  }
+
+  useEffect(
+    function () {
+      localStorage.setItem('watched', JSON.stringify(watched));
+    },
+    [watched],
+  );
+
   return (
     <>
       <NavBar>
@@ -107,12 +137,17 @@ function App() {
           {selectedId ? (
             <MovieDetails
               selectedId={selectedId}
+              watchedlist={watched}
               onClose={handleCloseMovieDetails}
+              onAddWatched={handleAddWatched}
             />
           ) : (
             <>
               <WatchedSummary watched={watched}></WatchedSummary>
-              <WatchList watched={watched}></WatchList>
+              <WatchList
+                watched={watched}
+                onDeleteWatchedMovie={handleDeleteMovie}
+              ></WatchList>
             </>
           )}
         </Box>
@@ -124,25 +159,30 @@ function App() {
 function MovieDetails({
   selectedId,
   onClose,
+  onAddWatched,
+  watchedlist,
 }: {
   selectedId: string;
   onClose: () => void;
+  onAddWatched: (movie: watchedListType) => void;
+  watchedlist: watchedListType[];
 }) {
-  const [movie, setMovie] = useState({});
+  const [movie, setMovie] = useState<TmovieDetails>({
+    title: '',
+    year: '',
+    poster: '',
+    runtime: '',
+    imdbRating: '',
+    plot: '',
+    released: '',
+    director: '',
+    genre: '',
+    actor: '',
+  });
   const [isLoading, setIsLoading] = useState(false);
+  const [userRating, setUserRating] = useState(0);
 
-  const {
-    Title: title,
-    Year: year,
-    Poster: poster,
-    Runtime: runtime,
-    imdbRating,
-    Plot: plot,
-    Released: released,
-    Director: director,
-    Genre: genre,
-    Actor: actor,
-  } = movie;
+  const isWatched = watchedlist?.find((m) => m.imdbID === selectedId);
 
   useEffect(() => {
     async function getMovieDetails() {
@@ -160,9 +200,21 @@ function MovieDetails({
     getMovieDetails();
   }, [selectedId]);
 
+  const {
+    Title: title,
+    Year: year,
+    Poster: poster,
+    Runtime: runtime,
+    imdbRating,
+    Plot: plot,
+    Released: released,
+    Director: director,
+    Genre: genre,
+    Actor: actor,
+  } = movie;
+
   useEffect(
     function () {
-      console.log(selectedId);
       if (!title) return;
       document.title = selectedId ? `Movie | ${title}` : 'usePopcorn';
 
@@ -186,6 +238,20 @@ function MovieDetails({
       document.removeEventListener('keydown', handleKeypress);
     };
   }, []);
+
+  function handleAdd() {
+    const newWatchedMovie: watchedListType = {
+      imdbID: selectedId,
+      title,
+      year,
+      poster,
+      imdbRating: +imdbRating,
+      runtime: +runtime.split(' ').at(0),
+      userRating,
+    };
+
+    onAddWatched(newWatchedMovie);
+  }
 
   return isLoading ? (
     <Loading />
@@ -213,8 +279,28 @@ function MovieDetails({
       </header>
 
       <section className="flex flex-col gap-4 ml-4">
-        <div className="bg-gray-800/60 rounded-md px-6 self-center py-4 w-full">
-          <StarRating maxRating={10} size={36}></StarRating>
+        <div className="bg-gray-800/60 rounded-md p-4 flex flex-col">
+          {!isWatched ? (
+            <>
+              <StarRating
+                maxRating={10}
+                size={36}
+                onRate={setUserRating}
+              ></StarRating>
+              {userRating > 0 && (
+                <button
+                  className="bg-[#6741d9] px-4 py-2 rounded-xl mt-2 transition-all duration-300 hover:bg-[#6741a9]"
+                  onClick={handleAdd}
+                >
+                  +Add to list
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="text-white tracking-wider">
+              You rated this movie {isWatched.userRating}⭐
+            </p>
+          )}
         </div>
         <p>
           <em>{plot}</em>
@@ -268,14 +354,43 @@ type PropSearch = {
 };
 
 const Search = ({ query, setQuery }: PropSearch) => {
+  // 1.
+  const inputEl = useRef<HTMLInputElement>(null);
+
+  useEffect(
+    function () {
+      function callback(e: KeyboardEvent) {
+        if (document.activeElement === inputEl.current) return;
+
+        if (e.code === 'Enter') {
+          inputEl.current!.focus();
+          setQuery('');
+        }
+      }
+
+      document.addEventListener('keydown', callback);
+      // console.log(inputEl.current);
+      inputEl.current!.focus();
+
+      return () => removeEventListener('keydown', callback);
+    },
+    [query],
+  );
+  // useEffect(function () {
+  //   const el = document.querySelector('.search') as HTMLInputElement;
+  //   console.log(el);
+  //   el.focus();
+  // }, []);
+
   return (
     <input
+      ref={inputEl}
       type="text"
-      className="text-md ms:px-4 ms:py-4 ms:text-xl w-40 rounded-md bg-[#7950f2]  px-3 py-2 outline-none transition-all duration-300 placeholder:text-sm sm:w-72 sm:placeholder:text-base sm:focus:w-96"
+      className="text-md ms:px-4 ms:py-4 ms:text-xl w-40 rounded-md bg-[#7950f2]  px-3 py-2 outline-none transition-all duration-300 placeholder:text-sm sm:w-72 sm:placeholder:text-base sm:focus:w-96 search"
       placeholder="Search movies... <min 3 char>"
       onChange={(e) => setQuery(e.target.value)}
       value={query}
-      autoFocus={true}
+      // autoFocus={true}
     />
   );
 };
@@ -298,7 +413,8 @@ const Box = ({ children }: { children: React.ReactNode }) => {
         onClick={() => setIsOpen((open) => !open)}
         className="sticky top-2 mr-2 right-0 flex aspect-square h-4 items-center justify-center rounded-full bg-[#212529] float-right"
       >
-        <span className="mb-1.5 text-xl">{isOpen ? '-' : '+'}</span>
+        {/* <span className="mb-1.5 text-xl">{isOpen ? '-' : '+'}</span> */}
+        {isOpen ? '-' : '+'}
       </button>
       {isOpen && children}
     </div>
@@ -335,7 +451,7 @@ const Movie = ({
 }) => {
   return (
     <li
-      className="grid grid-cols-[40px_1fr] items-center gap-x-6 px-8 py-4 cursor-pointer hover:bg-stone-900"
+      className="grid grid-cols-[40px_1fr] items-center gap-x-6 px-8 py-4 cursor-pointer hover:bg-stone-900 w-full"
       onClick={() => onSelect(movie.imdbID)}
     >
       <img
@@ -365,74 +481,108 @@ const WatchedSummary = ({ watched }: { watched: watchedListType[] }) => {
       <div className="flex items-center justify-between text-sm">
         <p className="flex gap-1.5 font-medium">
           <span>#️⃣</span>
-          <span>{watched.length} movies</span>
+          <span>
+            {watched.length} movie{watched.length > 1 && 's'}
+          </span>
         </p>
         <p className="flex gap-1.5 font-medium">
           <span>⭐</span>
-          <span>{avgImbdRating}</span>
+          <span>{avgImbdRating.toFixed(2)}</span>
         </p>
         <p className="flex gap-1.5 font-medium">
           <span>🌟</span>
-          <span>{avgUserRating}</span>
+          <span>{avgUserRating.toFixed(2)}</span>
         </p>
         <p className="flex gap-1.5 font-medium">
           <span>⌛</span>
-          <span>{avgRunTime} mins</span>
+          <span>{avgRunTime.toFixed(2)} mins</span>
         </p>
       </div>
     </div>
   );
 };
 
-const WatchList = ({ watched }: { watched: watchedListType[] }) => {
+const WatchList = ({
+  watched,
+  onDeleteWatchedMovie,
+}: {
+  watched: watchedListType[];
+  onDeleteWatchedMovie: (id: string) => void;
+}) => {
   return (
     <ul className="divide-y divide-stone-700">
       {watched.map((movie) => {
-        return <WatchedMovie movie={movie} key={movie.imdbID} />;
+        return (
+          <WatchedMovie
+            movie={movie}
+            key={movie.imdbID}
+            onDeleteWatchedMovie={onDeleteWatchedMovie}
+          />
+        );
       })}
     </ul>
   );
 };
 
-const WatchedMovie = ({ movie }: { movie: watchedListType }) => {
+const WatchedMovie = ({
+  movie,
+  onDeleteWatchedMovie,
+}: {
+  movie: watchedListType;
+  onDeleteWatchedMovie: (id: string) => void;
+}) => {
   return (
-    <li
-      key={movie.imdbID}
-      className="grid grid-cols-[40px_1fr] items-center gap-x-6 px-8 py-4"
-    >
-      <img
-        src={movie.Poster}
-        alt="movie poster"
-        className="row-span-2 w-full"
-      />
-      <h3 className="text-base font-semibold">{movie.Title}</h3>
-      <div className="flex items-center gap-4 text-sm">
-        <p className="flex gap-1">
-          <span>⭐</span>
-          <span>{8.65}</span>
-        </p>
-        <p className="flex gap-1">
-          <span>🌟</span>
-          <span>{8.65}</span>
-        </p>
-        <p className="flex gap-1">
-          <span>⌛</span>
-          <span>{132} mins</span>
-        </p>
-      </div>
-    </li>
+    <>
+      <li
+        key={movie.imdbID}
+        className="flex justify-between pr-8 transition-all duration-500"
+      >
+        <div className="grid grid-cols-[40px_1fr] items-center gap-x-6 px-8 py-4">
+          <img
+            src={movie.poster}
+            alt={`${movie.title} poster`}
+            className="row-span-2 w-full"
+          />
+          <h3 className="text-base font-semibold">{movie.title}</h3>
+          <div className="flex items-center gap-4 text-sm">
+            <p className="flex gap-1">
+              <span>⭐</span>
+              <span>{movie.imdbRating}</span>
+            </p>
+            <p className="flex gap-1">
+              <span>🌟</span>
+              <span>{movie.userRating}</span>
+            </p>
+            <p className="flex gap-1">
+              <span>⌛</span>
+              <span>{movie.runtime} mins</span>
+            </p>
+          </div>
+        </div>
+        <button
+          className="font-semibold self-center bg-red-500 aspect-square h-4 rounded-full text-black text-xs flex items-center justify-center"
+          onClick={() => onDeleteWatchedMovie(movie.imdbID)}
+        >
+          X
+        </button>
+      </li>
+    </>
   );
 };
 
 function StartSearchText() {
   return (
     <div className="flex flex-col items-center h-full border-red-300 w-full justify-center">
+      <span className="tracking-wide text-xl">
+        Press <em>Enter</em> to
+      </span>
       <span className="uppercase text-4xl tracking-widest font-extrabold">
         Start
       </span>
-      <span className="tracking-wide text-xl">Searching a movie...</span>
+      <span className="tracking-wide text-xl">searching a movie...</span>
     </div>
   );
 }
 
 export default App;
+
