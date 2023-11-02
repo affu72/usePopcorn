@@ -4,13 +4,7 @@ import React, { DOMElement, useEffect, useRef, useState } from 'react';
 import Loading from './Loading';
 import StarRating from './StarRating';
 import RateConversion from './RateConversion';
-
-type MovieType = {
-  imdbID: string;
-  Title: string;
-  Year: string;
-  Poster: string;
-};
+import { useMovies } from './useMovies';
 
 type watchedListType = {
   imdbID: string;
@@ -39,17 +33,16 @@ type TmovieDetails = {
 const API_KEY = '46b47180';
 
 function App() {
-  const [movies, setMovies] = useState<MovieType[]>([]);
   // const [watched, setWatched] = useState<watchedListType[]>([]);
+
   const [watched, setWatched] = useState<watchedListType[]>(() => {
     const storedValue = localStorage.getItem('watched')!;
     return JSON.parse(storedValue);
   });
+
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [err, setErr] = useState('');
+  const { movies, err, isLoading } = useMovies(query, handleCloseMovieDetails);
 
   function handleSelectMovie(id: string) {
     setSelectedId((selectedId) => (id === selectedId ? null : id));
@@ -62,51 +55,6 @@ function App() {
   function handleDeleteMovie(id: string) {
     setWatched((prev) => prev.filter((m) => m.imdbID !== id));
   }
-
-  useEffect(() => {
-    const controller = new AbortController();
-    async function getMovieData() {
-      try {
-        setIsLoading(true);
-        setErr('');
-        const res = await fetch(
-          `http://www.omdbapi.com/?apikey=${API_KEY}&s=${query}`,
-          { signal: controller.signal },
-        );
-
-        if (!res.ok)
-          throw new Error('Something went wrong in fetching movie data');
-
-        const data = await res.json();
-
-        if (data.Response === 'False') {
-          throw new Error(data.Error);
-        }
-
-        setMovies(() => data.Search);
-      } catch (err: any) {
-        setMovies([]);
-        if (err.name !== 'AbortError') {
-          setErr(err.message);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    if (query.length < 3) {
-      setMovies([]);
-      setErr('');
-      return;
-    }
-
-    handleCloseMovieDetails();
-    getMovieData();
-
-    return function () {
-      controller.abort();
-    };
-  }, [query]);
 
   function handleAddWatched(movie: watchedListType) {
     setWatched((prev) => [...prev, movie]);
@@ -470,6 +418,7 @@ const Movie = ({
     <li
       className="grid grid-cols-[40px_1fr] items-center gap-x-6 px-8 py-4 cursor-pointer hover:bg-stone-900 w-full"
       onClick={() => onSelect(movie.imdbID)}
+      tabIndex={0}
     >
       <img
         src={movie.Poster}
