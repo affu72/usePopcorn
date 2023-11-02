@@ -5,6 +5,8 @@ import Loading from './Loading';
 import StarRating from './StarRating';
 import RateConversion from './RateConversion';
 import { useMovies } from './useMovies';
+import { useLocalStorageState } from './useLocalStorageState';
+import { useKeyboard } from './useKeyboard';
 
 type watchedListType = {
   imdbID: string;
@@ -33,16 +35,17 @@ type TmovieDetails = {
 const API_KEY = '46b47180';
 
 function App() {
-  // const [watched, setWatched] = useState<watchedListType[]>([]);
+  const [watched, setWatched] = useLocalStorageState([], 'watched');
 
-  const [watched, setWatched] = useState<watchedListType[]>(() => {
-    const storedValue = localStorage.getItem('watched')!;
-    return JSON.parse(storedValue);
-  });
+  // const [watched, setWatched] = useState<watchedListType[]>([]);
+  // const [watched, setWatched] = useState<watchedListType[]>(() => {
+  //   const storedValue = localStorage.getItem('watched')!;
+  //   return JSON.parse(storedValue);
+  // });
 
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { movies, err, isLoading } = useMovies(query, handleCloseMovieDetails);
+  const { movies, err, isLoading } = useMovies(query); //custom hook
 
   function handleSelectMovie(id: string) {
     setSelectedId((selectedId) => (id === selectedId ? null : id));
@@ -60,13 +63,6 @@ function App() {
     setWatched((prev) => [...prev, movie]);
     handleCloseMovieDetails();
   }
-
-  useEffect(
-    function () {
-      localStorage.setItem('watched', JSON.stringify(watched));
-    },
-    [watched],
-  );
 
   return (
     <>
@@ -87,13 +83,13 @@ function App() {
           {selectedId ? (
             <MovieDetails
               selectedId={selectedId}
-              watchedlist={watched}
+              watchedlist={watched} //ts prolem
               onClose={handleCloseMovieDetails}
               onAddWatched={handleAddWatched}
             />
           ) : (
             <>
-              <WatchedSummary watched={watched}></WatchedSummary>
+              <WatchedSummary watched={watched}></WatchedSummary> //ts problem
               <WatchList
                 watched={watched}
                 onDeleteWatchedMovie={handleDeleteMovie}
@@ -163,6 +159,8 @@ function MovieDetails({
     getMovieDetails();
   }, [selectedId]);
 
+  useKeyboard('Escape', onClose);
+
   const {
     Title: title,
     Year: year,
@@ -188,19 +186,6 @@ function MovieDetails({
     },
     [title, selectedId],
   );
-
-  useEffect(() => {
-    function handleKeypress(e) {
-      if (e.code === 'Escape') {
-        onClose();
-      }
-    }
-
-    document.addEventListener('keydown', handleKeypress);
-    return function () {
-      document.removeEventListener('keydown', handleKeypress);
-    };
-  }, []);
 
   function handleAdd() {
     const newWatchedMovie: watchedListType = {
@@ -319,28 +304,33 @@ type PropSearch = {
 };
 
 const Search = ({ query, setQuery }: PropSearch) => {
-  // 1.
   const inputEl = useRef<HTMLInputElement>(null);
 
-  useEffect(
-    function () {
-      function callback(e: KeyboardEvent) {
-        if (document.activeElement === inputEl.current) return; // if element is already focused just return
+  useKeyboard('Enter', function () {
+    if (document.activeElement === inputEl.current) return;
+    inputEl.current!.focus();
+    setQuery('');
+  });
 
-        if (e.code === 'Enter') {
-          inputEl.current!.focus(); // focus whenevr we click the enter key.
-          setQuery('');
-        }
-      }
+  // useEffect(
+  //   function () {
+  //     function callback(e: KeyboardEvent) {
+  //      // if element is already focused just return
 
-      document.addEventListener('keydown', callback);
-      // console.log(inputEl.current);
-      inputEl.current!.focus(); //this will focus when app mount
+  //       if (e.code === 'Enter') {
+  //         inputEl.current!.focus(); // focus whenevr we click the enter key.
+  //         setQuery('');
+  //       }
+  //     }
 
-      return () => removeEventListener('keydown', callback);
-    },
-    [query],
-  );
+  //     document.addEventListener('keydown', callback);
+  //     // console.log(inputEl.current);
+  //     inputEl.current!.focus(); //this will focus when app mount
+
+  //     return () => removeEventListener('keydown', callback);
+  //   },
+  //   [query],
+  // );
   // useEffect(function () {
   //   const el = document.querySelector('.search') as HTMLInputElement;
   //   console.log(el);

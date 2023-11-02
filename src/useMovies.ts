@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 type MovieType = {
   imdbID: string;
@@ -8,12 +8,16 @@ type MovieType = {
 };
 const API_KEY = '46b47180';
 
-export function useMovies(query: string, callback?: () => void) {
+// export function useMovies(query: string, callback?: () => void) {
+
+//when aded the callback in deopendency array it it giving invite error, so removing that funtionality for now.
+
+export function useMovies(query: string) {
   const [movies, setMovies] = useState<MovieType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [err, setErr] = useState('');
   useEffect(() => {
-    callback?.();
+    // callback?.();
     const controller = new AbortController();
     async function getMovieData() {
       try {
@@ -57,5 +61,5 @@ export function useMovies(query: string, callback?: () => void) {
     };
   }, [query]);
 
-  return { movies, err, isLoading }
+  return { movies, err, isLoading };
 }
