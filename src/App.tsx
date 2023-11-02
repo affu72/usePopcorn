@@ -20,6 +20,8 @@ type watchedListType = {
   runtime: number;
   imdbRating: number;
   userRating: number;
+  countRatingDecision: number;
+  list: number[];
 };
 
 type TmovieDetails = {
@@ -179,10 +181,23 @@ function MovieDetails({
     genre: '',
     actor: '',
   });
+
   const [isLoading, setIsLoading] = useState(false);
-  const [userRating, setUserRating] = useState(0);
+  const [userRating, setUserRating] = useState<number>(0);
+  const countRef = useRef(0);
+  const ratingDecisionList = useRef<number[]>([]);
 
   const isWatched = watchedlist?.find((m) => m.imdbID === selectedId);
+
+  useEffect(
+    function () {
+      if (userRating) {
+        countRef.current++;
+        ratingDecisionList.current.push(userRating);
+      }
+    },
+    [userRating],
+  );
 
   useEffect(() => {
     async function getMovieDetails() {
@@ -248,6 +263,8 @@ function MovieDetails({
       imdbRating: +imdbRating,
       runtime: +runtime.split(' ').at(0),
       userRating,
+      countRatingDecision: countRef.current,
+      list: ratingDecisionList.current,
     };
 
     onAddWatched(newWatchedMovie);
@@ -360,17 +377,17 @@ const Search = ({ query, setQuery }: PropSearch) => {
   useEffect(
     function () {
       function callback(e: KeyboardEvent) {
-        if (document.activeElement === inputEl.current) return;
+        if (document.activeElement === inputEl.current) return; // if element is already focused just return
 
         if (e.code === 'Enter') {
-          inputEl.current!.focus();
+          inputEl.current!.focus(); // focus whenevr we click the enter key.
           setQuery('');
         }
       }
 
       document.addEventListener('keydown', callback);
       // console.log(inputEl.current);
-      inputEl.current!.focus();
+      inputEl.current!.focus(); //this will focus when app mount
 
       return () => removeEventListener('keydown', callback);
     },
@@ -474,7 +491,7 @@ const WatchedSummary = ({ watched }: { watched: watchedListType[] }) => {
   const avgRunTime = average(watched.map((movie) => movie.runtime));
 
   return (
-    <div className="bg-[#343a40] px-8 pb-6 pt-4 rounded-md shadow-md">
+    <div className="bg-[#343a40] px-8 pb-6 pt-4 rounded-md shadow-md sticky top-0">
       <h3 className="uppercase text-lg mb-1 tracking-wide font-normal">
         movies you watched
       </h3>
@@ -532,7 +549,6 @@ const WatchedMovie = ({
   onDeleteWatchedMovie: (id: string) => void;
 }) => {
   return (
-    <>
       <li
         key={movie.imdbID}
         className="flex justify-between pr-8 transition-all duration-500"
@@ -566,7 +582,6 @@ const WatchedMovie = ({
           X
         </button>
       </li>
-    </>
   );
 };
 
@@ -583,6 +598,7 @@ function StartSearchText() {
     </div>
   );
 }
+
 
 export default App;
 
