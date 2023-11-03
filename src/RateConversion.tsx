@@ -4,6 +4,7 @@ import AsyncSelect from 'react-select/async';
 import getSymbolFromCurrency from 'currency-symbol-map';
 import Loading from './Loading';
 import { useRateConversion } from './useRateConversion';
+import FooterBox from './FooterBox';
 
 const host = 'api.frankfurter.app';
 export default function RateConversion() {
@@ -79,7 +80,7 @@ export default function RateConversion() {
   };
 
   return (
-    <div className=" bg-[#2b3035]  mt-8 h-28 flex justify-between p-4 items-center">
+    <FooterBox>
       <form action="" className="flex gap-8 shrink-0 justify-center">
         <input
           type="number"
@@ -124,6 +125,6 @@ export default function RateConversion() {
           </div>
         )}
       </div>
-    </div>
+    </FooterBox>
   );
 }
