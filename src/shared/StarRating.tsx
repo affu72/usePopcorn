@@ -18,7 +18,7 @@ function StarRating({
   message = [],
   defaultRating = 0,
   onRate,
-}: PropStarRating) {
+}: Readonly<PropStarRating>) {
   const [rating, setRating] = useState(defaultRating);
   const [tempRating, setTempRating] = useState(0);
 

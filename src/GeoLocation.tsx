@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import FooterBox from './FooterBox';
+import FooterBox from './components/FooterBox';
 
 function useGeoLocation() {
   const [location, setLocation] = useState({ lat: 0, lon: 0 });

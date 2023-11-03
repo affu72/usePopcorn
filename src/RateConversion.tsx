@@ -2,9 +2,9 @@ import { useState } from 'react';
 import Select from 'react-select';
 import AsyncSelect from 'react-select/async';
 import getSymbolFromCurrency from 'currency-symbol-map';
-import Loading from './Loading';
-import { useRateConversion } from './useRateConversion';
-import FooterBox from './FooterBox';
+import Loading from './shared/Loading';
+import { useRateConversion } from './custom-hooks/useRateConversion';
+import FooterBox from './components/FooterBox';
 
 const host = 'api.frankfurter.app';
 export default function RateConversion() {

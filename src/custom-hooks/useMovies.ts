@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MovieType } from './../types';
+import { MovieType } from '../../types';
 const API_KEY = '46b47180';
 
 // export function useMovies(query: string, callback?: () => void) {
