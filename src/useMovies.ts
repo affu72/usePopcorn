@@ -1,11 +1,5 @@
 import { useEffect, useState } from 'react';
-
-type MovieType = {
-  imdbID: string;
-  Title: string;
-  Year: string;
-  Poster: string;
-};
+import { MovieType } from './../types';
 const API_KEY = '46b47180';
 
 // export function useMovies(query: string, callback?: () => void) {
