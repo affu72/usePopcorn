@@ -1,22 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Select from 'react-select';
 import AsyncSelect from 'react-select/async';
 import getSymbolFromCurrency from 'currency-symbol-map';
 import Loading from './Loading';
+import { useRateConversion } from './useRateConversion';
 
 const host = 'api.frankfurter.app';
 export default function RateConversion() {
   const [currency, setCurrency] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const [amount, setAmount] = useState<string>('');
-  const [convertedVlue, setConverted] = useState(null);
-
   const [from, setFrom] = useState('');
-  const [to, setto] = useState('');
+  const [to, setTo] = useState('');
+
+  const { loading, convertedValue } = useRateConversion(+amount, from, to);
 
   const loadOption = (searchValue: string, callBack: any) => {
     async function getCurrency() {
-      setLoading(true);
       const res = await fetch(`https://${host}/currencies`);
 
       const data = await res.json();
@@ -31,7 +30,6 @@ export default function RateConversion() {
       );
 
       setCurrency(currList);
-      setLoading(false);
       callBack(filterCurr);
     }
 
@@ -55,6 +53,7 @@ export default function RateConversion() {
     valueContainer: (base, props) => {
       return {
         ...base,
+        width: '8rem',
       };
     },
     container: (base: any, props: any) => {
@@ -79,42 +78,12 @@ export default function RateConversion() {
     }),
   };
 
-  useEffect(
-    function () {
-      const controller = new AbortController();
-      async function getConvertedValue() {
-        setLoading(true);
-        const res = await fetch(
-          `https://${host}/latest?amount=${amount}&from=${from}&to=${to}`,
-          { signal: controller.signal },
-        );
-
-        const data = await res.json();
-
-        console.log(data);
-
-        setConverted(data);
-        setLoading(false);
-      }
-
-      if (!amount || !from || !to) {
-        setLoading(false);
-        setConverted(null);
-        return;
-      }
-
-      getConvertedValue();
-      return () => controller.abort();
-    },
-    [amount, from, to],
-  );
-
   return (
-    <div>
+    <div className=" bg-[#2b3035]  mt-8 h-28 flex justify-between p-4 items-center">
       <form action="" className="flex gap-8 shrink-0 justify-center">
         <input
           type="number"
-          className="rounded-sm px-4 text-black"
+          className="rounded-sm px-4 text-black w-32"
           placeholder="Enter amount"
           onChange={(e) => setAmount(e.target.value)}
           value={amount}
@@ -122,7 +91,6 @@ export default function RateConversion() {
         <AsyncSelect
           menuPlacement="top"
           loadOptions={loadOption}
-          isLoading={loading}
           placeholder="From currency"
           defaultOptions
           styles={customStyles}
@@ -138,21 +106,21 @@ export default function RateConversion() {
             (curr: { value: string }) => curr.value !== from,
           )}
           styles={customStyles}
-          onChange={(curr: any) => setto(curr.value)}
+          onChange={(curr: any) => setTo(curr.value)}
           defaultValue={to}
           isDisabled={!from}
         ></Select>
       </form>
-      <div className="bg-gray-800 px-2 py-2 rounded-md h-20 mt-8">
+      <div className="px-2 py-2 rounded-md w-1/4">
         {loading && <Loading></Loading>}
-        {convertedVlue && !loading && (
-          <div className="flex justify-evenly font-bold">
+        {convertedValue && !loading && (
+          <div className="flex gap-4 flex-col font-bold">
             <span>
               {amount} {from.toUpperCase()} ={' '}
-              {(+convertedVlue?.rates[to.toUpperCase()]).toFixed(2)}
+              {(+convertedValue?.rates[to.toUpperCase()]).toFixed(2)}
               {to.toUpperCase()}
             </span>
-            <span className="">{convertedVlue.date}</span>
+            <span className="">{convertedValue.date}</span>
           </div>
         )}
       </div>
