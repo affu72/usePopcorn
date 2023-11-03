@@ -9,6 +9,7 @@ import { useKeyboard } from './useKeyboard';
 import { MovieType, TmovieDetails, watchedListType } from './../types';
 import RateConversion from './RateConversion';
 import { Box } from './Box';
+import GeoLocation from './GeoLocation';
 
 const API_KEY = '46b47180';
 
@@ -76,7 +77,8 @@ function App() {
           )}
         </Box>
       </Main>
-      <RateConversion></RateConversion>
+      {/* <RateConversion></RateConversion> */}
+      <GeoLocation></GeoLocation>
     </>
   );
 }
