@@ -1,37 +1,15 @@
 // import reactLogo from './assets/react.svg'
 
-import React, { DOMElement, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Loading from './Loading';
 import StarRating from './StarRating';
-import RateConversion from './RateConversion';
 import { useMovies } from './useMovies';
 import { useLocalStorageState } from './useLocalStorageState';
 import { useKeyboard } from './useKeyboard';
+import { MovieType, TmovieDetails, watchedListType } from './../types';
+import RateConversion from './RateConversion';
+import { Box } from './Box';
 
-type watchedListType = {
-  imdbID: string;
-  title: string;
-  year: string;
-  poster: string;
-  runtime: number;
-  imdbRating: number;
-  userRating: number;
-  countRatingDecision: number;
-  list: number[];
-};
-
-type TmovieDetails = {
-  title: string;
-  year: string;
-  poster: string;
-  runtime: string;
-  imdbRating: string;
-  plot: string;
-  released: string;
-  director: string;
-  genre: string;
-  actor: string;
-};
 const API_KEY = '46b47180';
 
 function App() {
@@ -83,7 +61,7 @@ function App() {
           {selectedId ? (
             <MovieDetails
               selectedId={selectedId}
-              watchedlist={watched} //ts prolem
+              watchedlist={watched} //ts problem
               onClose={handleCloseMovieDetails}
               onAddWatched={handleAddWatched}
             />
@@ -98,6 +76,7 @@ function App() {
           )}
         </Box>
       </Main>
+      <RateConversion></RateConversion>
     </>
   );
 }
@@ -312,31 +291,6 @@ const Search = ({ query, setQuery }: PropSearch) => {
     setQuery('');
   });
 
-  // useEffect(
-  //   function () {
-  //     function callback(e: KeyboardEvent) {
-  //      // if element is already focused just return
-
-  //       if (e.code === 'Enter') {
-  //         inputEl.current!.focus(); // focus whenevr we click the enter key.
-  //         setQuery('');
-  //       }
-  //     }
-
-  //     document.addEventListener('keydown', callback);
-  //     // console.log(inputEl.current);
-  //     inputEl.current!.focus(); //this will focus when app mount
-
-  //     return () => removeEventListener('keydown', callback);
-  //   },
-  //   [query],
-  // );
-  // useEffect(function () {
-  //   const el = document.querySelector('.search') as HTMLInputElement;
-  //   console.log(el);
-  //   el.focus();
-  // }, []);
-
   return (
     <input
       ref={inputEl}
@@ -356,22 +310,6 @@ const Statistics = ({ movies }: { movies: MovieType[] }) => {
       <p className="text-sm sm:text-xl">
         Found <span className="font-bold">{movies.length}</span> results
       </p>
-    </div>
-  );
-};
-
-const Box = ({ children }: { children: React.ReactNode }) => {
-  const [isOpen, setIsOpen] = useState(true);
-  return (
-    <div className="relative w-96 max-w-md rounded-md bg-[#2b3035] h-full overflow-auto scrollbar transition-all duration-700">
-      <button
-        onClick={() => setIsOpen((open) => !open)}
-        className="sticky top-2 mr-2 right-0 flex aspect-square h-4 items-center justify-center rounded-full bg-[#212529] float-right"
-      >
-        {/* <span className="mb-1.5 text-xl">{isOpen ? '-' : '+'}</span> */}
-        {isOpen ? '-' : '+'}
-      </button>
-      {isOpen && children}
     </div>
   );
 };
